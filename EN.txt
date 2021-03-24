@@ -1,0 +1,38 @@
+FileEncryption
+Select file
+none
+encrypt
+decrypt
+send
+receive
+copy public key
+About
+Unknown version
+The version of the rsa encrypted file is unknown.
+Please select a version or cancel.
+cancel
+Select
+Warning
+'password' is one of the worst passwords!
+Do you really want to continue?
+Error
+Error: No file selected.
+Success
+The file was successfully encrypted with the following password:
+The original file still exists. You can delete it.
+The file was decrypted, but the password could be wrong.
+An unexpected error accrued.
+Wrong password
+The file was successfully decrypted.
+The entered password is incorrect. Please try again.
+The file with your RSA keys is probably corrupted.
+The file was successfully encrypted.
+The original file still exists. You can delete it.
+Error: input is not a valid RSA-key.
+Error: couldn't get your public key.
+Your public key was copied to the clipboard. Paste it before closing this window.
+Select a file
+Copyright(c) 2021 Martin S. Merkli
+This program is free and open-source software and is licensed under the GNU GPL3. Visit https://www.gnu.org/licenses/ for more information.
+You can read more about this project in the documentation.
+Version:
