@@ -1,0 +1,38 @@
+DateiVerschlüsselung
+Wählen Sie eine Datei aus.
+none
+verschlüsseln
+entschlüsseln
+senden
+erhalten
+öffentlicher Schlüssel kopieren
+Über
+unbekannte Version
+Die RSA-Version der Datei ist unbekannt.
+Bitte wählen Sie eine Version aus oder brechen Sie ab.
+Abbrechen
+Auswählen
+Warnung
+'password' ist eines der schlechtesten Passwörter!
+Möchten Sie wirklich fortfahren?
+Fehler
+Fehler: keine Datei ausgewählt.
+Erfolg
+Die Datei wurde erfolgreich verschlüsselt mit dem folgenden Passwort:
+Die Orginaldatei existiert noch. Sie können sie löschen.
+Die Datei wurde entschlüsselt, aber das Passwort könnte falsch sein.
+Ein unerwarter Fehler ist aufgetreten.
+Falsches Passwort
+Die Datei wurde erfolgreich entschlüsselt.
+Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.
+Die Datei mit Ihren RSA-Schlüsseln ist vermutlich beschädigt.
+Die Datei wurde erfolgreich verschlüsselt
+Die Orginaldatei existiert noch. Sie können sie löschen.
+Fehler: Eingabe ist kein gültiger RSA-Schlüssel
+Fehler: Ihr öffentlicher Schlüssel wurde nicht gefunden.
+Ihr öffentlicher RSA-Schlüssel wurde in die Zwischenablage kopiert. Fügen Sie ihn ein, bevor Sie dieses Fenster schliessen.
+Wählen Sie eine Datei aus.
+Copyright(c) 2021 Martin S. Merkli
+Dieses Programm ist freie (bezogen auf Freiheit), Open-Source und lizensiert unter der GNU GPL v3. Besuchen Sie <https://www.gnu.org/licenses/> für mehr Informationen.
+Sie können mehr über dieses Projekt in der Dokumentation erfahren.
+Version:
