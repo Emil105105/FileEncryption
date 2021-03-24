@@ -1,4 +1,6 @@
+#!/usr/bin/env python3
 # FileEncryption.py, Copyright(c) 2021 Martin S. Merkli
+# version: 1.2
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,26 +16,41 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from tkinter import *
-from hashlib import sha512 as sha
-from hashlib import sha256
+from hashlib import pbkdf2_hmac
+from hashlib import sha512
 from random import randrange
 import os
 from tkinter import filedialog
 from tkinter import messagebox
 from time import time
-from math import sqrt
+
 
 debug = False
 fileselected = 'none'
 filename = 'none'
+language = []
 
 
 def xor(x: bytes, y: bytes) -> bytes:
     return bytes([_a ^ _b for _a, _b in zip(x, y)])
 
 
-def hashpassword(password: str, minlength: int) -> bytes:
-    sha512hashed = sha(password.encode()).digest()
+def secure_hash(data: bytes, mode: int = 1, length: int = 64) -> bytes:
+    hashed = pbkdf2_hmac('sha512', data, sha512(data).digest(), (mode + 10) * 1000, length)
+    return hashed
+
+
+def hashpassword2(password: str, minlength: int) -> bytes:
+    pbkdf2_hmac_hashed = secure_hash(password.encode(), 4, 1024)
+    hashed = pbkdf2_hmac_hashed
+    while len(hashed) < minlength:
+        hashed += hashed
+    printdebug('hashed password')
+    return hashed
+
+
+def hashpassword1p0(password: str, minlength: int) -> bytes:
+    sha512hashed = sha512(password.encode()).digest()
     hashed = sha512hashed
     while len(hashed) < minlength:
         hashed += hashed
@@ -86,6 +103,7 @@ def modinverse(e: int, phin: int) -> int:
         return modinv
     except:
         printdebug('using old modinverse')
+
         def egdc(a, b):
             if a == 0:
                 return b, 0, 1
@@ -119,11 +137,11 @@ def generatersakeys(base10length: int = 320) -> list:
 
 
 def rsaencrypt(file: bytes, publickeys: list) -> bytes:
-    filekey = int(os.urandom(32).hex(), 16)
+    filekey = int(os.urandom(64).hex(), 16)
     key = pow(filekey, publickeys[0], publickeys[1])
-    hashed = hashpassword(str(filekey), len(file))
+    hashed = hashpassword2(str(filekey), len(file))
     normalcipher = xor(file, hashed)
-    cipher = b'\x01RSA'
+    cipher = b'\x02RSA'
     cipher += bytes([len(str(key).encode()) // 256])
     cipher += bytes([len(str(key).encode()) % 256])
     cipher += str(key).encode()
@@ -136,27 +154,33 @@ def rsadecrypt(cipher: bytes, privatekeys: list) -> bytes:
     if cipher[0] == 1:
         printdebug('RSA-version: v1')
         return rsadecrypt1(cipher, privatekeys)
+    elif cipher[0] == 2:
+        printdebug('RSA-version: v2')
+        return rsadecrypt2(cipher, privatekeys)
     else:
         printdebug('unknown rsa-version')
         askwin = Tk()
-        askwin.title('Unknown version - FileEncryption')
-        a1 = Label(askwin, text='The version of the rsa encrypted file is unknown.\nPlease select a version or cancel.')
-        options = ['cancel', 'v1']
+        askwin.title(text(10) + ' - ' + text(1))
+        a1 = Label(askwin, text=text(11) + '\n' + text(12))
+        options = [text(13), 'v1', 'v2']
         clicked = StringVar()
-        clicked.set('cancel')
+        clicked.set(text(13))
         a2 = OptionMenu(askwin, clicked, *options)
-        a3 = Button(askwin, text='Select', command=askwin.quit)
+        a3 = Button(askwin, text=text(14), command=askwin.quit)
         a1.grid(row=0, column=0)
         a2.grid(row=1, column=0)
         a3.grid(row=2, column=0)
         askwin.mainloop()
         selected = clicked.get()
-        if selected == 'cancel':
+        if selected == text(13):
             printdebug('version canceled')
             return b'__cancel__'
         elif selected == 'v1':
             printdebug('v1 selected')
             return rsadecrypt1(cipher, privatekeys)
+        elif selected == 'v2':
+            printdebug('v2 selected')
+            return rsadecrypt2(cipher, privatekeys)
 
 
 def rsadecrypt1(cipher: bytes, privatekeys: list) -> bytes:
@@ -164,7 +188,16 @@ def rsadecrypt1(cipher: bytes, privatekeys: list) -> bytes:
     cryptkey = int(cipher[6:keylength].decode())
     key = pow(cryptkey, privatekeys[0], privatekeys[1])
     cipherfile = cipher[keylength:]
-    hashed = hashpassword(str(key), len(cipherfile))
+    hashed = hashpassword1p0(str(key), len(cipherfile))
+    return xor(cipherfile, hashed)
+
+
+def rsadecrypt2(cipher: bytes, privatekeys: list) -> bytes:
+    keylength = (cipher[4] * 256) + (cipher[5]) + 6
+    cryptkey = int(cipher[6:keylength].decode())
+    key = pow(cryptkey, privatekeys[0], privatekeys[1])
+    cipherfile = cipher[keylength:]
+    hashed = hashpassword2(str(key), len(cipherfile))
     return xor(cipherfile, hashed)
 
 
@@ -203,9 +236,9 @@ def getrsapublic() -> str:
     return output
 
 
-def selectfile(label: Label):
+def selectfile(label: Label) -> None:
     global fileselected
-    fileselectedtmp = filedialog.askopenfilename(initialdir=os.getcwd(), title='Select a file')
+    fileselectedtmp = filedialog.askopenfilename(initialdir=os.getcwd(), title=text(34))
     global filename
     if fileselectedtmp == ():
         fileselected = 'none'
@@ -237,32 +270,35 @@ def isrsakey(potentialkey: str) -> bool:
         return False
 
 
-def encryptfile(passwordentry: Entry, filedirectory: str):
+def encryptfile(passwordentry: Entry, filedirectory: str) -> None:
     password = passwordentry.get()
     if password == 'password':
         printdebug('unsecure password')
-        if messagebox.askyesnocancel('Warning - FileEncryption', "'password' is one of the worst passwords!"
-                                                                 " Do you really want to continue?"):
+        if messagebox.askyesnocancel(text(15) + ' - ' + text(1), text(16) + text(17)):
             pass
         else:
             return None
     if filedirectory == 'none':
         printdebug('no file selected')
-        messagebox.showerror('Error - FileEncryption', 'Error: No file selected.')
+        messagebox.showerror(text(18) + ' - ' + text(1), text(19))
         return None
     with open(filedirectory, 'rb') as originalfile:
         with open(filedirectory + '.enc', 'wb') as encfile:
             originalcontent = originalfile.read()
-            hashedpassword = hashpassword(password, len(originalcontent))
-            encfile.write(b'\x01ENC')
+            hashedpassword = hashpassword2(password, len(originalcontent))
+            encfile.write(b'\x02ENC')
             encfile.write(xor(originalcontent, hashedpassword))
-            messagebox.showinfo('Success - FileEncryption', "The file was successfully encrypted with the following"
-                                                            " password: '" + password + "'. \nThe original file still"
-                                                                                        " exists. You can delete it.")
+            messagebox.showinfo(text(20) + ' - ' + text(1), text(21) + "'" + password + "'. \n" + text(22))
 
 
 def decryptfile1(cipher: bytes, password: str) -> bytes:
-    hashed = hashpassword(password, len(cipher))
+    hashed = hashpassword1p0(password, len(cipher))
+    content = xor(cipher[4:], hashed)
+    return content
+
+
+def decryptfile2(cipher: bytes, password: str) -> bytes:
+    hashed = hashpassword2(password, len(cipher))
     content = xor(cipher[4:], hashed)
     return content
 
@@ -276,40 +312,43 @@ def decryptfile(passwordentry: Entry, filedirectory: str) -> None:
                 if cipher[0] == 1:
                     content = decryptfile1(cipher, password)
                     printdebug('decrypted with v1')
+                elif cipher[0] == 2:
+                    content = decryptfile2(cipher, password)
+                    printdebug('decrypted with v2')
                 else:
                     printdebug('unknown encryption version')
                     askwin = Tk()
-                    askwin.title('Unknown version - FileEncryption')
-                    a1 = Label(askwin,
-                               text='The version of the encrypted file is unknown.\nPlease select a version or cancel.')
-                    options = ['cancel', 'v1']
+                    askwin.title(text(10) + ' - ' + text(1))
+                    a1 = Label(askwin, text=text(11) + '\n' + text(12))
+                    options = [text(13), 'v1']
                     clicked = StringVar()
-                    clicked.set('cancel')
+                    clicked.set(text(13))
                     a2 = OptionMenu(askwin, clicked, *options)
-                    a3 = Button(askwin, text='Select', command=askwin.quit)
+                    a3 = Button(askwin, text=text(14), command=askwin.quit)
                     a1.grid(row=0, column=0)
                     a2.grid(row=1, column=0)
                     a3.grid(row=2, column=0)
                     askwin.mainloop()
                     selected = clicked.get()
-                    if selected == 'cancel':
+                    if selected == text(13):
                         printdebug('version canceled')
                         return None
                     elif selected == 'v1':
                         printdebug('v1 selected')
                         content = decryptfile1(cipher, password)
                 newfile.write(content)
-                messagebox.showinfo('Success - FileEncryption', 'The file was decrypted, '
-                                                                'but the password could be wrong.')
+                messagebox.showinfo(text(20) + ' - ' + text(1), text(23))
     except:
-        messagebox.showerror('Error - FileEncryption', 'An unexpected error accrued.')
+        messagebox.showerror(text(18) + ' - ' + text(1), text(25))
 
 
-def receiversa(passwordentry: Entry, filedirectory: str):
+def receiversa(passwordentry: Entry, filedirectory: str) -> None:
+    if filedirectory == 'none':
+        return None
     with open('rsa.txt', 'r') as encryptedkeysfile:
         with open(filedirectory, 'rb') as originalfile:
             with open(filedirectory[:-4], 'wb') as newfile:
-                passwordint = int(sha256(passwordentry.get().encode()).hexdigest(), 16)
+                passwordint = int(secure_hash(passwordentry.get().encode(), 3, 32).hex(), 16)
                 try:
                     lines = encryptedkeysfile.readlines()
                     if int(lines[1]) % passwordint == 0:
@@ -317,19 +356,17 @@ def receiversa(passwordentry: Entry, filedirectory: str):
                         content = rsadecrypt(cipher, [int(lines[1]) // passwordint, int(lines[2])])
                         if content != b'__ERROR__' and b'__cancel__':
                             newfile.write(content)
-                            messagebox.showinfo('Success - FileEncryption', 'The file was successfully decrypted.')
+                            messagebox.showinfo(text(20) + ' - ' + text(1), text(26))
                         else:
-                            messagebox.showerror('Error - FileEncryption', 'An unexpected error accrued.')
+                            messagebox.showerror(text(18) + ' - ' + text(1), text(25))
                             return None
                     else:
-                        messagebox.showerror('Wrong password - FileEncryption', 'The entered password is incorrect. '
-                                                                                'Please try again.')
+                        messagebox.showerror(text(25) + ' - ' + text(1), text(27))
                 except:
-                    messagebox.showerror('Error - FileEncryption', 'An unexpected error accrued.\nThe file with your '
-                                                                   'RSA keys is probably corrupted')
+                    messagebox.showerror(text(18) + ' - ' + text(1), text(24) + '\n' + text(28))
 
 
-def sendrsa(passwordentry: Entry, filedirectory: str):
+def sendrsa(passwordentry: Entry, filedirectory: str) -> None:
     key = passwordentry.get()
     if isrsakey(key):
         with open(filedirectory, 'rb') as originalfile:
@@ -339,10 +376,9 @@ def sendrsa(passwordentry: Entry, filedirectory: str):
                 keytwo = int(splited[2].replace('g', ''), 16)
                 publickeys = [keyone, keytwo]
                 rsafile.write(rsaencrypt(originalfile.read(), publickeys))
-                messagebox.showinfo('Success - FileEncryption', "The file was successfully encrypted.\nThe original"
-                                                                " file still exists. You can delete it.")
+                messagebox.showinfo(text(20) + ' - ' + text(1), text(29) + '\n' + text(30))
     else:
-        messagebox.showerror('Error - FileEncryption', 'Error: input is not a valid RSA-key.')
+        messagebox.showerror(text(18) + ' - ' + text(1), text(31))
 
 
 def copypublic(window: Tk) -> None:
@@ -351,34 +387,58 @@ def copypublic(window: Tk) -> None:
         window.clipboard_clear()
         window.clipboard_append(getrsapublic())
         window.update()
-        messagebox.showinfo('Success - FileEncryption', 'Your private key was copied to the clipboard.'
-                                                        ' Paste it before closing this window')
+        messagebox.showinfo(text(20) + ' - ' + text(1), text(33))
     else:
-        messagebox.showerror('Error - FileEncryption', "Error: couldn't get your public key.\nThe file with your "
-                                                       'RSA keys is probably corrupted')
+        messagebox.showerror(text(18) + ' - ' + text(1), text(32) + '\n' + text(28))
 
 
-def openabout():
-    messagebox.showinfo('About - FileEncryption', 'Copyright(c) 2021 Martin S. Merkli\nThis program is free and'
-                                                  ' open-source software and is licensed under the GNU GPL3.'
-                                                  ' Visit https://www.gnu.org/licenses/ for more information.'
-                                                  '\nYou can read more about this project in the documentation.')
+def openabout() -> None:
+    messagebox.showinfo(text(9) +  ' - ' + text(1),
+                        text(35) + '\n' + text(36) + '\n' + text(37) + '\n' + text(38) + '1.2')
 
 
-def startgui():
+def languageinit() -> None:
+    global language
+    supported_languages = ['EN', 'DE']
+    for supported_language in supported_languages:
+        try:
+            with open(supported_language + '.txt', 'r') as language_file:
+                words = language_file.readlines()
+                language = []
+                for word in words:
+                    language.append(word.replace('\n', ''))
+            return None
+        except FileNotFoundError:
+            pass
+    language = []
+
+
+def text(index: int) -> str:
+    global language
+    if index > 0:
+        index -= 1
+    else:
+        return ''
+    if len(language) > index:
+        return language[index]
+    else:
+        return ''
+
+
+def startgui() -> None:
     global fileselected
     fileselected = 'none'
     root = Tk()
-    root.title('FileEncryption')
-    a1 = Button(root, text='Select file', command=lambda: selectfile(a2), width=16)
+    root.title(text(1))
+    a1 = Button(root, text=text(2), command=lambda: selectfile(a2), width=16)
     a2 = Label(root, text=filename)
     b = Entry(root, width=38, show='*')
-    c1 = Button(root, text='encrypt', command=lambda: encryptfile(b, fileselected), width=16)
-    c2 = Button(root, text='decrypt', command=lambda: decryptfile(b, fileselected), width=16)
-    d1 = Button(root, text='send', command=lambda: sendrsa(b, fileselected), width=16)
-    d2 = Button(root, text='receive', command=lambda: receiversa(b, fileselected), width=16)
-    e1 = Button(root, text='copy public key', command=lambda: copypublic(root), width=16)
-    e2 = Button(root, text='About', command=openabout, width=16)
+    c1 = Button(root, text=text(4), command=lambda: encryptfile(b, fileselected), width=16)
+    c2 = Button(root, text=text(5), command=lambda: decryptfile(b, fileselected), width=16)
+    d1 = Button(root, text=text(6), command=lambda: sendrsa(b, fileselected), width=16)
+    d2 = Button(root, text=text(7), command=lambda: receiversa(b, fileselected), width=16)
+    e1 = Button(root, text=text(8), command=lambda: copypublic(root), width=16)
+    e2 = Button(root, text=text(9), command=openabout, width=16)
     a1.grid(row=0, column=0)
     a2.grid(row=0, column=1)
     b.grid(row=1, column=0, columnspan=2)
@@ -392,4 +452,5 @@ def startgui():
 
 
 if __name__ == '__main__':
+    languageinit()
     startgui()
