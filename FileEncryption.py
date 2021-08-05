@@ -137,7 +137,7 @@ def generatersakeys(base10length: int = 320) -> list:
 
 
 def rsaencrypt(file: bytes, publickeys: list) -> bytes:
-    filekey = int(os.urandom(64).hex(), 16)
+    filekey = int(os.urandom(500).hex(), 16)
     key = pow(filekey, publickeys[0], publickeys[1])
     hashed = hashpassword2(str(filekey), len(file))
     normalcipher = xor(file, hashed)
