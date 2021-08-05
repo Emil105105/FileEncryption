@@ -32,13 +32,13 @@ def select_location():
     location = directory
 
 def main():
-	global location
-	root = tk.Tk()
-	root.title('Update - FileEncryption')
+    global location
+    root = tk.Tk()
+    root.title('Update - FileEncryption')
     button_a = tk.Button(root, text='Select directory of FileEncryption.py', command=select_location)
     label_b = tk.Label(root, text=location)
     pressed_c = tk.BooleanVar(False)
-    button_c = tk.Button(root, text='Update', command=lambda: pressed_g.set(True))
+    button_c = tk.Button(root, text='Update', command=lambda: pressed_c.set(True))
     button_a.grid(row=0, column=0)
     label_b.grid(row=1, column=0)
     button_c.grid(row=2, column=0)
@@ -50,20 +50,20 @@ def main():
             	location += '/'
             if os.path.exists(location + 'FileEncryption.py'):
             	continue_available = True
-        	else:
+            else:
             	continue_available = False
             if continue_available:
             	button_c.config(state=tk.NORMAL)
-        	else:
+            else:
             	button_c.config(state=tk.DISABLED)
             if pressed_c.get():
             	loop = False
             	with open(location + 'FileEncryption.py', 'rb') as old_file:
-            		old_content = old_file.read()
+                    old_content = old_file.read()
             	with open(location + 'FileEncryption.py', 'wb') as new_file:
-            		new_file.write(old_content.replace(b'os.urandom(64)', b'os.urandom(500)'))
+            	    new_file.write(old_content.replace(b'os.urandom(64)', b'os.urandom(500)'))
             	messagebox.showinfo('Success - FileEncryption', 'Install successful: delete this updater')
-        	label_b.config(text=location)
+            label_b.config(text=location)
         except tk.TclError:
             sys.exit(0)
 
