@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# PluginInstaller.py, Copyright(c) 2021 Martin S. Merkli
+# updater(1-1to1-2).py, Copyright(c) 2021 Martin S. Merkli
 # version: 1.2
 #
 # This program is free software: you can redistribute it and/or modify
